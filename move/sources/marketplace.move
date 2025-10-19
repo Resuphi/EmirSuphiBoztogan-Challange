@@ -2,14 +2,12 @@
 
 module challenge::marketplace;
 
-// GEREKLİ 'USE' BİLDİRİMLERİ EKLENDİ
-use sui::object::{Self, ID, UID};
-use sui::transfer;
-use sui::tx_context::{Self, TxContext};
+use sui::object::{ID, UID};
+use sui::tx_context::TxContext;
 use challenge::hero::Hero;
-use sui::coin::{Self, Coin};
-use sui::event;
 use sui::sui::SUI;
+use sui::coin::{Self, Coin}; // Hem 'coin' modülünü (Self ile) hem de 'Coin' tipini alır
+use sui::event;              // 'event::emit' için
 // ========= ERRORS =========
 
 const EInvalidPayment: u64 = 1;
