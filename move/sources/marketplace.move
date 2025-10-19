@@ -10,8 +10,6 @@ use challenge::hero::Hero;
 use sui::coin::{Self, Coin};
 use sui::event;
 use sui::sui::SUI;
-use sui::event;
-use sui::coin;
 // ========= ERRORS =========
 
 const EInvalidPayment: u64 = 1;
@@ -107,7 +105,7 @@ public fun buy_hero(list_hero: ListHero, coin: Coin<SUI>, ctx: &mut TxContext) {
 
     // TODO: Emit HeroBought event with transaction details
     event::emit(HeroBought {
-        listing_id: object::uid_to_inner(&id),
+        list_hero_id: object::uid_to_inner(&id), // <--- DÜZELTİLDİ
         price: price,
         buyer: ctx.sender(),
         seller: seller,
