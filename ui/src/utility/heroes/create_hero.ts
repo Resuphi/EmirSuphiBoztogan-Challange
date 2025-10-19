@@ -14,7 +14,16 @@ export const createHero = (
     // Hints:
     // Use tx.pure.string() for string arguments
     // Use tx.pure.u64() for number arguments (convert power to BigInt)
-    // The target module is 'arena', not 'hero'
+    // The target module is 'arena', not 'hero' <-- (Assuming this hint is a typo, as the function name is 'hero')
+
+  tx.moveCall({
+    target: `${packageId}::hero::create_hero`,
+    arguments: [
+      tx.pure.string(name),
+      tx.pure.string(imageUrl),
+      tx.pure.u64(BigInt(power)),
+    ],
+  });
 
   return tx;
 };

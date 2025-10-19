@@ -1,14 +1,12 @@
 import { Transaction } from "@mysten/sui/transactions";
 
-export const battle = (packageId: string, heroId: string, arenaId: string) => {
+export const createArena = (packageId: string, heroId: string) => {
   const tx = new Transaction()
 
-
   tx.moveCall({
-    target: `${packageId}::arena::battle`,
+    target: `${packageId}::arena::create_arena`,
     arguments: [
       tx.object(heroId),
-      tx.object(arenaId),
     ],
   });
 

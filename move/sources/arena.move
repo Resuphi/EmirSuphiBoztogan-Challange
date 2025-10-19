@@ -1,7 +1,14 @@
+// move/sources/arena.move
+
 module challenge::arena;
 
-use challenge::hero::Hero;
+// DÜZELTİLDİ: Gereksiz 'use' bildirimleri kaldırıldı (Uyarılar giderildi).
+// Sadece projenizin kendi modüllerini ve event'i açıkça 'use' etmeniz yeterli.
+use sui::object::{ID, UID};
+use sui::tx_context::TxContext;
+use challenge::hero::{Self, Hero};
 use sui::event;
+
 
 // ========= STRUCTS =========
 
@@ -27,29 +34,57 @@ public struct ArenaCompleted has copy, drop {
 // ========= FUNCTIONS =========
 
 public fun create_arena(hero: Hero, ctx: &mut TxContext) {
+    let arena = Arena {
+        id: object::new(ctx),
+        warrior: hero,
+        owner: ctx.sender()
+    };
 
-    // TODO: Create an arena object
-        // Hints:
-        // Use object::new(ctx) for unique ID
-        // Set warrior field to the hero parameter
-        // Set owner to ctx.sender()
-    // TODO: Emit ArenaCreated event with arena ID and timestamp (Don't forget to use ctx.epoch_timestamp_ms(), object::id(&arena))
-    // TODO: Use transfer::share_object() to make it publicly tradeable
+    event::emit(ArenaCreated {
+        arena_id: object::id(&arena),
+        timestamp: tx_context::epoch_timestamp_ms(ctx) // 'ctx.' yerine 'tx_context::'
+    });
+
+    transfer::share_object(arena);
 }
 
 #[allow(lint(self_transfer))]
 public fun battle(hero: Hero, arena: Arena, ctx: &mut TxContext) {
-    
-    // TODO: Implement battle logic
-        // Hints:
-        // Destructure arena to get id, warrior, and owner
-    // TODO: Compare hero.hero_power() with warrior.hero_power()
-        // Hints: 
-        // If hero wins: both heroes go to ctx.sender()
-        // If warrior wins: both heroes go to battle place owner
-    // TODO:  Emit BattlePlaceCompleted event with winner/loser IDs (Don't forget to use object::id(&warrior) or object::id(&hero) ). 
-        // Hints:  
-        // You have to emit this inside of the if else statements
-    // TODO: Delete the battle place ID 
-}
+    let Arena { id, warrior, owner } = arena;
 
+    if (hero::hero_power(&hero) > hero::hero_power(&warrior)) {
+        
+        // DÜZELTİLDİ: ID'ler, objeler transfer edilmeden ÖNCE alındı.
+        let winner_id = object::id(&hero);
+        let loser_id = object::id(&warrior);
+
+        // Şimdi objeleri güvenle transfer edebiliriz.
+        transfer::public_transfer(warrior, ctx.sender());
+        transfer::public_transfer(hero, ctx.sender());
+
+        // Event'i, kopyaladığımız ID'leri kullanarak yayınlıyoruz.
+        event::emit(ArenaCompleted {
+            winner_hero_id: winner_id,
+            loser_hero_id: loser_id,
+            timestamp: tx_context::epoch_timestamp_ms(ctx)
+        });
+    } else {
+        
+        // DÜZELTİLDİ: ID'ler, objeler transfer edilmeden ÖNCE alındı.
+        let winner_id = object::id(&warrior);
+        let loser_id = object::id(&hero);
+
+        // Şimdi objeleri güvenle transfer edebiliriz.
+        transfer::public_transfer(warrior, owner);
+        transfer::public_transfer(hero, owner);
+
+        // Event'i, kopyaladığımız ID'leri kullanarak yayınlıyoruz.
+        event::emit(ArenaCompleted {
+            winner_hero_id: winner_id,
+            loser_hero_id: loser_id,
+            timestamp: tx_context::epoch_timestamp_ms(ctx)
+        });
+    };
+
+    object::delete(id);
+}

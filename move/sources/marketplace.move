@@ -1,9 +1,17 @@
+// move/sources/marketplace.move
+
 module challenge::marketplace;
 
+// GEREKLİ 'USE' BİLDİRİMLERİ (MİNİMAL)
+// Sui, 'object', 'transfer', 'event', 'coin' ve 'tx_context'
+// modüllerini otomatik olarak import eder.
+// Sadece kendi modüllerimizi ve spesifik TİPLERİ 'use' etmemiz yeterlidir.
+
 use challenge::hero::Hero;
-use sui::coin::{Self, Coin};
-use sui::event;
 use sui::sui::SUI;
+use sui::coin::Coin;
+use sui::object::{ID, UID};
+use sui::tx_context::TxContext;
 
 // ========= ERRORS =========
 
@@ -44,56 +52,70 @@ public struct HeroBought has copy, drop {
 // ========= FUNCTIONS =========
 
 fun init(ctx: &mut TxContext) {
-
-    // NOTE: The init function runs once when the module is published
-    // TODO: Initialize the module by creating AdminCap
-        // Hints:
-        // Create AdminCap id with object::new(ctx)
-    // TODO: Transfer it to the module publisher (ctx.sender()) using transfer::public_transfer() function
+    let admin_cap = AdminCap {
+        id: object::new(ctx)
+    };
+    transfer::public_transfer(admin_cap, ctx.sender());
 }
 
 public fun list_hero(nft: Hero, price: u64, ctx: &mut TxContext) {
+    let list_hero = ListHero {
+        id: object::new(ctx),
+        nft: nft, // 'nft' burada tüketildi
+        price: price,
+        seller: ctx.sender()
+    };
 
-    // TODO: Create a list_hero object for marketplace
-        // Hints:
-        // - Use object::new(ctx) for unique ID
-        // - Set nft, price, and seller (ctx.sender()) fields
-    // TODO: Emit HeroListed event with listing details (Don't forget to use object::id(&list_hero) )
-    // TODO: Use transfer::share_object() to make it publicly tradeable
+    event::emit(HeroListed {
+        list_hero_id: object::id(&list_hero), 
+        price: price,
+        seller: ctx.sender(),
+        timestamp: tx_context::epoch_timestamp_ms(ctx)
+    });
+
+    transfer::share_object(list_hero);
 }
 
 #[allow(lint(self_transfer))]
 public fun buy_hero(list_hero: ListHero, coin: Coin<SUI>, ctx: &mut TxContext) {
+    // 'list_hero' objesi burada parçalanarak tüketiliyor.
+    let ListHero { id, nft, price, seller } = list_hero;
 
-    // TODO: Destructure list_hero to get id, nft, price, and seller
-        // Hints:
-        // let ListHero { id, nft, price, seller } = list_hero;
-    // TODO: Use assert! to verify coin value equals listing price (coin::value(&coin) == price) else abort with `EInvalidPayment`
-    // TODO: Transfer coin to seller (use transfer::public_transfer() function)
-    // TODO: Transfer hero NFT to buyer (ctx.sender())
-    // TODO: Emit HeroBought event with transaction details (Don't forget to use object::uid_to_inner(&id) )
-    // TODO: Delete the listing ID (object::delete(id))
+    assert!(coin::value(&coin) == price, EInvalidPayment);
+
+    // 'coin' objesi burada transfer edilerek tüketiliyor.
+    transfer::public_transfer(coin, seller);
+
+    // 'nft' objesi burada transfer edilerek tüketiliyor.
+    transfer::public_transfer(nft, ctx.sender());
+
+    event::emit(HeroBought {
+        listing_id: object::uid_to_inner(&id),
+        price: price,
+        buyer: ctx.sender(),
+        seller: seller,
+        timestamp: tx_context::epoch_timestamp_ms(ctx)
+    });
+
+    // 'id' objesi burada silinerek tüketiliyor.
+    object::delete(id);
 }
 
 // ========= ADMIN FUNCTIONS =========
 
 public fun delist(_: &AdminCap, list_hero: ListHero) {
+    // 'list_hero' objesi burada parçalanarak tüketiliyor.
+    let ListHero { id, nft, price: _, seller } = list_hero;
 
-    // NOTE: The AdminCap parameter ensures only admin can call this
-    // TODO: Implement admin delist functionality
-        // Hints:
-        // Destructure list_hero (ignore price with "price: _")
-    // TODO:Transfer NFT back to original seller
-    // TODO:Delete the listing ID (object::delete(id))
+    // 'nft' objesi burada transfer edilerek tüketiliyor.
+    transfer::public_transfer(nft, seller);
+
+    // 'id' objesi burada silinerek tüketiliyor.
+    object::delete(id);
 }
 
 public fun change_the_price(_: &AdminCap, list_hero: &mut ListHero, new_price: u64) {
-    
-    // NOTE: The AdminCap parameter ensures only admin can call this
-    // list_hero has &mut so price can be modified     
-    // TODO: Update the listing price
-        // Hints:
-        // Access the price field of list_hero and update it
+    list_hero.price = new_price;
 }
 
 // ========= GETTER FUNCTIONS =========
@@ -112,4 +134,3 @@ public fun test_init(ctx: &mut TxContext) {
     };
     transfer::transfer(admin_cap, ctx.sender());
 }
-
